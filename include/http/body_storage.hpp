@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <string>
 #include <vector>
 
@@ -39,7 +41,7 @@ namespace routine::http {
 
     const uint8_t* data() const;
 
-    StorageType get_type() const override { return StorageType::None; }
+    StorageType get_type() const override { return StorageType::Memory; }
 
   private:
     std::vector<uint8_t> data_;
@@ -55,7 +57,7 @@ namespace routine::http {
 
     const uint8_t* data() const;
 
-    StorageType get_type() const override { return StorageType::None; }
+    StorageType get_type() const override { return StorageType::File; }
 
   private:
     std::vector<uint8_t> data_;
@@ -71,10 +73,12 @@ namespace routine::http {
 
     const uint8_t* data() const;
 
-    StorageType get_type() const override { return StorageType::None; }
+    StorageType get_type() const override { return StorageType::Json; }
+
+    const nlohmann::json& json() const;
 
   private:
-    std::vector<uint8_t> data_;
+    nlohmann::json data_;
   };
 
 } // namespace routine::http

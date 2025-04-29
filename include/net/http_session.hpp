@@ -25,10 +25,11 @@ namespace routine::net {
     void on_read_body(const std::error_code& ec, size_t);
 
     void on_request_ready();
-    void send_response();
+    void send_response(std::function<void()> callback = nullptr);
 
     bool is_errors(const std::error_code& ec);
     void close(std::error_code ec);
+    void run_timeout_timer();
 
   private:
     asio::streambuf buffer_;
@@ -38,6 +39,9 @@ namespace routine::net {
     http::Request_ptr request_;
     http::Response_ptr response_;
     std::shared_ptr<http::RequestHandler> handler_;
+    asio::steady_timer timeout_timer_;
+
+    std::string address_;
   };
 
 } // namespace routine::net

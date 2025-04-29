@@ -2,11 +2,26 @@
 #include "http/headers.hpp"
 #include "http/response.hpp"
 #include "http/types.hpp"
+#include <asm-generic/socket.h>
+#include <boost/asio/detail/socket_option.hpp>
 #include <boost/asio/post.hpp>
+#include <chrono>
+#include <memory>
+#include <system_error>
 
 routine::net::HttpSession::HttpSession(routine::Scheduler_ptr scheduler,
                                        asio::ip::tcp::socket socket)
-    : LoggableObject("Http"), scheduler_(scheduler), socket_(std::move(socket)) {}
+    : LoggableObject("Http"), scheduler_(scheduler), socket_(std::move(socket)),
+      timeout_timer_(scheduler_->get_context()) {
+  address_ = socket_.is_open()
+                 ? std::format("{}:{}", socket_.remote_endpoint().address().to_v4().to_string(),
+                               socket_.remote_endpoint().port())
+                 : "Null";
+}
+
+routine::net::HttpSession::~HttpSession() {
+  close({});
+}
 
 void routine::net::HttpSession::run() {
   do_read_headers();
@@ -14,9 +29,12 @@ void routine::net::HttpSession::run() {
 
 void routine::net::HttpSession::do_read_headers() {
   using namespace std::placeholders;
+  if (!socket_.is_open()) return;
+
   buffer_.consume(buffer_.size());
   asio::async_read_until(socket_, buffer_, "\r\n\r\n",
                          std::bind(&HttpSession::on_read_headers, shared_from_this(), _1, _2));
+  run_timeout_timer();
 }
 
 void routine::net::HttpSession::on_read_headers(const std::error_code& ec, size_t bytes) {
@@ -67,14 +85,17 @@ void routine::net::HttpSession::on_read_headers(const std::error_code& ec, size_
 
 void routine::net::HttpSession::do_read_body() {
   using namespace std::placeholders;
+  if (!socket_.is_open()) return;
   size_t content_length = std::stoull(request_->headers()["content-length"]);
 
   if (buffer_.size() <= content_length) {
     debug("Body is already contained in buffer");
     on_read_body({}, buffer_.size());
-  } else
+  } else {
     asio::async_read(socket_, buffer_, asio::transfer_exactly(content_length - buffer_.size()),
                      std::bind(&HttpSession::on_read_body, shared_from_this(), _1, _2));
+    run_timeout_timer();
+  }
 }
 
 void routine::net::HttpSession::do_read_chunked_body() {
@@ -96,34 +117,38 @@ void routine::net::HttpSession::on_request_ready() {
   buffer_.consume(buffer_.size());
   scheduler_->prepare_task([self = shared_from_this()]() {
     self->response_ = self->handler_->process_request(self->request_);
-    self->send_response();
+    if (self->response_)
+      self->send_response();
+    else
+      self->on_request_ready();
   });
 }
 
-void routine::net::HttpSession::send_response() {
+void routine::net::HttpSession::send_response(std::function<void()> callback) {
+  if (!socket_.is_open()) return;
   if (response_) {
     std::string response_buffer = response_->prepare_response();
-    socket_.async_write_some(asio::buffer(response_buffer),
-                             [self = shared_from_this()](const std::error_code& ec, size_t bytes) {
-                               if (self->is_errors(ec)) return;
+    socket_.async_write_some(
+        asio::buffer(response_buffer),
+        [self = shared_from_this(), callback](const std::error_code& ec, size_t bytes) {
+          if (self->is_errors(ec)) return;
 
-                               self->debug("Response sended OK");
-                               bool isKeepAlive =
-                                   self->request_->headers().contains("connection") &&
-                                   (self->request_->headers()["connection"] == "Keep-Alive" ||
-                                    self->request_->headers()["connection"] == "keep-alive");
-                               self->response_ = nullptr;
-                               self->request_ = nullptr;
+          self->debug("Response sended OK");
+          bool isKeepAlive = self->request_->headers().contains("connection") &&
+                             (self->request_->headers()["connection"] == "Keep-Alive" ||
+                              self->request_->headers()["connection"] == "keep-alive");
+          self->response_ = nullptr;
+          self->request_ = nullptr;
 
-                               if (isKeepAlive) {
-                                 self->do_read_headers();
-                               } else {
-                                 self->close({});
-                               }
-                             });
+          if (isKeepAlive) {
+            self->do_read_headers();
+          } else {
+            self->close({});
+          }
+          if (callback) callback();
+        });
   } else {
-    warn("No response available in Session {}:{}", socket_.remote_endpoint().address().to_string(),
-         socket_.remote_endpoint().port());
+    warn("No response available in Session {}", address_);
     response_ = std::make_unique<http::Response>(
         http::Status::INTERNAL_SERVER_ERROR, http::Headers{}, "No response received from task...");
     send_response();
@@ -131,18 +156,31 @@ void routine::net::HttpSession::send_response() {
 }
 
 bool routine::net::HttpSession::is_errors(const std::error_code& ec) {
+  timeout_timer_.cancel();
   if (ec) {
-    error("#{} - {}", ec.value(), ec.message());
+    error("Socket {}. Error code #{} - {}", address_, ec.value(), ec.message());
     close(ec);
     return true;
   }
-  return false;
+  return !socket_.is_open();
 }
 
 void routine::net::HttpSession::close(std::error_code ec) {
-  debug("Closing socket {}:{} by {} {}. Session aborted.",
-        socket_.remote_endpoint().address().to_v4().to_string(), socket_.remote_endpoint().port(),
-        ec.value(), ec.message());
-  socket_.shutdown(asio::socket_base::shutdown_both);
+  if (socket_.is_open()) {
+    socket_.cancel();
+    try {
+      socket_.shutdown(asio::socket_base::shutdown_both);
+    } catch (...) { debug("Socket shutdown is missing. Already closed"); }
+  }
   socket_.close();
+}
+
+void routine::net::HttpSession::run_timeout_timer() {
+  timeout_timer_.expires_after(std::chrono::milliseconds(scheduler_->get_io_timeout()));
+  timeout_timer_.async_wait([self = shared_from_this()](const std::error_code& ec) {
+    if (!ec) {
+      self->socket_.cancel();
+      self->socket_.close();
+    }
+  });
 }

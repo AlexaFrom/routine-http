@@ -2,7 +2,7 @@
 #include <spdlog/spdlog.h>
 #include <thread>
 
-routine::Scheduler::Scheduler() : LoggableObject("Scheduler"), context_() {}
+routine::Scheduler::Scheduler() : LoggableObject("Scheduler"), context_(), io_timeout_ms_(5000) {}
 
 void routine::Scheduler::set_router(std::unique_ptr<routine::http::RouteHandler> router) {
   router_ = std::move(router);
@@ -10,6 +10,13 @@ void routine::Scheduler::set_router(std::unique_ptr<routine::http::RouteHandler>
 
 asio::io_context& routine::Scheduler::get_context() {
   return context_;
+}
+
+void routine::Scheduler::set_io_timeout(size_t milliseconds) {
+  io_timeout_ms_ = milliseconds;
+}
+size_t routine::Scheduler::get_io_timeout() const {
+  return io_timeout_ms_;
 }
 
 void routine::Scheduler::run(size_t io_bound_threads, size_t cpu_bound_threads) {

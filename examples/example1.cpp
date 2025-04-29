@@ -1,3 +1,7 @@
+#include "http/body_storage.hpp"
+#include "http/headers.hpp"
+#include "http/response.hpp"
+#include "http/types.hpp"
 #include "net/acceptor.hpp"
 #include "net/http_session.hpp"
 #include "request_handler.hpp"
@@ -6,6 +10,7 @@
 
 #include <chrono>
 #include <memory>
+#include <nlohmann/json_fwd.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 #include <thread>
@@ -22,7 +27,9 @@ public:
   // }
 
   routine::http::Response_ptr process_request(routine::http::Request_ptr request) override {
-    return nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    return std::make_unique<routine::http::Response>(routine::http::Status::OK,
+                                                     routine::http::Headers{});
   }
 };
 
@@ -31,11 +38,21 @@ public:
   // DONT FORGET TO SPECIFY THE PATH OF RESOURCE HANDLER
   inline static const std::string path{"/api/echo"};
 
-  routine::http::Response_ptr process_request(routine::http::Request_ptr request) override {
-    auto response = std::make_unique<routine::http::Response>(
-        routine::http::Status::OK, routine::http::Headers{}, std::move(request->body()));
+  routine::http::Response_ptr prepare_request(routine::http::Request_ptr request) override {
+    if (request->method() != routine::http::Method::Head)
+      request->body() = std::make_unique<routine::http::JsonBody>();
+    return nullptr;
+  }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  routine::http::Response_ptr process_request(routine::http::Request_ptr request) override {
+    // cast to JsonBody from interface
+    auto* body =
+        request->body() ? dynamic_cast<routine::http::JsonBody*>(request->body().get()) : nullptr;
+
+    auto response = std::make_unique<routine::http::Response>(
+        routine::http::Status::OK, routine::http::Headers{},
+        body->json()["message"].get<std::string>());
+
     return response;
   }
 };
@@ -69,6 +86,8 @@ int main() {
   // routine::net::Acceptor<routine::net::HttpsSession> acceptor(scheduler, 443);
 
   scheduler->set_router(std::move(router));
+  scheduler->set_io_timeout(2000); // 5000 milliseconds as default value
+  // you may change this value in any thread
 
   // Start
 

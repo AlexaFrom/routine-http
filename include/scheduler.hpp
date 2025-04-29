@@ -28,6 +28,9 @@ namespace routine {
 
     void set_router(std::unique_ptr<http::RouteHandler> router);
 
+    void set_io_timeout(size_t milliseconds);
+    size_t get_io_timeout() const;
+
     asio::io_context& get_context();
 
     void run(size_t io_bound_threads, size_t cpu_bound_threads);
@@ -42,6 +45,8 @@ namespace routine {
     std::unique_ptr<http::RouteHandler> router_;
     ThreadPool cpu_thread_pool_;
     ThreadPool io_thread_pool_;
+
+    size_t io_timeout_ms_;
   };
 
   using Scheduler_ptr = std::shared_ptr<Scheduler>;

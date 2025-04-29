@@ -14,6 +14,7 @@ routine::ThreadPool::ThreadPool() : utils::LoggableObject("ThreadPool") {}
 void routine::ThreadPool::push(std::function<void()> lambda) {
   if (threads_.empty()) {
     error("No available created threads. Execute ThreadPool::run(size_t n) for create n threads");
+    lambda();
     return;
   }
 
@@ -60,7 +61,7 @@ void routine::ThreadPool::stop(size_t n) {
     threads_.erase(threads_.begin(), threads_.begin() + n);
   }
 
-  // переносим оставшиеся задачи в выключенных потоках
+  // переносим оставшиеся задачи в отключенных потоках
   if (threads_.empty()) {
     size_t losses_task =
         std::accumulate(stopped.begin(), stopped.end(), 0ull,
