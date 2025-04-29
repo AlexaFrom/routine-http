@@ -1,0 +1,21 @@
+BasedOnStyle: LLVM
+
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+
+ColumnLimit: 100
+AllowShortIfStatementsOnASingleLine: true
+AllowShortBlocksOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline
+
+AlwaysBreakTemplateDeclarations: Yes
+
+BreakBeforeBraces: Attach
+
+NamespaceIndentation: All
+IndentCaseLabels: true
+SortIncludes: true
+
+PointerAlignment: Left
+SpaceBeforeParens: ControlStatements

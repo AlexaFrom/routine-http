@@ -1,0 +1,6 @@
+/build/
+/out/
+/logs/
+CMakeFiles/
+/CMakeCache.txt
+/compile_commands.json
