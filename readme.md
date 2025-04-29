@@ -116,7 +116,8 @@ All documents you can see in readme.md or 'docs/' folder.
  -	anything, but not unit tests ☺
 
 >*The code may contain comments in russian lang. Using the interface you not notice it, but I apologize☺*
-> **If something doesn't work, it's probably my fail. If it's not too much trouble, please let me know**
+
+>**If something doesn't work, it's probably my fail. If it's not too much trouble, please let me know**
 
 ### License
 Library is distributed under the MIT license. Any use or modification is not deny.
