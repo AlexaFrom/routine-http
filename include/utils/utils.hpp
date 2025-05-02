@@ -69,6 +69,35 @@ namespace routine::http::utils {
     return oss.str();
   }
 
+  inline std::string_view to_string(routine::http::Header header) {
+    static const std::unordered_map<http::Header, std::string> map = {
+        {Header::None, "none"},
+        {Header::Host, "host"},
+        {Header::User_Aggent, "user-agent"},
+        {Header::Accept, "accept"},
+        {Header::Accept_Encoding, "accept-encoding"},
+        {Header::Accept_Language, "accept-language"},
+        {Header::Content_Type, "content-type"},
+        {Header::Content_Length, "content-length"},
+        {Header::Authorization, "authorization"},
+        {Header::Connection, "connection"},
+        {Header::Referer, "referer"},
+        {Header::Cookie, "cookie"},
+        {Header::Cache_Control, "cache-control"},
+        {Header::Origin, "origin"},
+        {Header::Date, "date"},
+        {Header::Server, "server"},
+        {Header::Set_Cookie, "set-cookie"},
+        {Header::Last_Modified, "last-modified"},
+        {Header::Location, "location"},
+        {Header::Content_Encoding, "content-encoding"},
+        {Header::Access_Control_Allow_Origin, "access-control-allow-origin"},
+        {Header::Access_Control_Allow_Methods, "access-control-allow-methods"},
+        {Header::Transfer_Encoding, "transfer-encoding"},
+    };
+    return map.at(header);
+  }
+
   // Convert std::string to routine::http::Version
   inline http::Version version_from_string(const std::string& string) {
     // std::transform(string.begin(), string.end(), string.begin(), ::toupper);
@@ -112,7 +141,7 @@ namespace routine::http::utils {
     static const std::array<std::string, 10> names{"NONE",   "GET",  "POST",    "PUT",     "PATCH",
                                                    "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE"};
 
-    return names[static_cast<size_t>(method)];
+    return names.at(static_cast<size_t>(method));
   }
 
   // Convert routine::http::Status to std::string_view

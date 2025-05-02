@@ -28,9 +28,16 @@ public:
 
   routine::http::Response_ptr process_request(routine::http::Request_ptr request) override {
     auto logger = spdlog::get("Http");
+    // print all headers
     for (auto& header : request->headers())
-      logger->info("{}: {}", header.first, header.second);
+      logger->info(header.as_string());
 
+    // check if Keep-Alive connection
+    if (request->headers().at(routine::http::Header::Connection).value() == "Keep-Alive") {
+      logger->info("Keep-Alive is setted");
+    }
+
+    // make&return response
     return std::make_unique<routine::http::Response>(routine::http::Status::Ok,
                                                      routine::http::Headers{});
   }
@@ -51,6 +58,7 @@ public:
     // cast to JsonBody from interface
     auto* body = dynamic_cast<routine::http::JsonBody*>(request->body().get());
 
+    // make empty response
     auto response = std::make_unique<routine::http::Response>(
         routine::http::Status::Ok, routine::http::Headers{},
         std::make_shared<routine::http::MemoryBody>());

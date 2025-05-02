@@ -53,7 +53,7 @@ std::string routine::http::Response::prepare_response() {
     std::ostringstream stream;
     stream << "HTTP/1.1 " << utils::to_string(status_) << "\r\n";
     for (auto& header : headers_)
-      stream << header.first << ": " << header.second << "\r\n";
+      stream << header.as_string() << "\r\n";
 
     stream << "\r\n";
     if (body_) stream << body_->as_string();

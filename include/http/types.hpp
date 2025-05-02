@@ -37,7 +37,8 @@ namespace routine::http {
     Location,
     Content_Encoding,
     Access_Control_Allow_Origin,
-    Access_Control_Allow_Methods
+    Access_Control_Allow_Methods,
+    Transfer_Encoding,
   };
 
   enum class Version : uint8_t { None = 0, Http10 = 10, Http11 = 11, Http2 = 20, Http3 = 30 };

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <memory>
 #include <system_error>
+#include <unordered_set>
 
 routine::net::HttpSession::HttpSession(routine::Scheduler_ptr scheduler,
                                        asio::ip::tcp::socket socket)
@@ -24,7 +25,6 @@ void routine::net::HttpSession::run() {
 }
 
 void routine::net::HttpSession::do_read_headers() {
-  info("Waiting headers...");
   using namespace std::placeholders;
   if (!socket_.is_open()) return;
 
@@ -61,12 +61,12 @@ void routine::net::HttpSession::on_read_headers(const std::error_code& ec, size_
 
   if (request_->body()) {
     // если обработчик подразумевает наличие тела, т.е. он же его и создал
-    if (request_->headers().contains("content-length")) {
+    if (request_->headers().contains(http::Header::Content_Length)) {
       do_read_body();
       return;
     }
-    const bool isChunkedBody = request_->headers().contains("transfer-encoding") &&
-                               request_->headers()["transfer-encoding"] == "chunked";
+    const bool isChunkedBody = request_->headers().contains(http::Header::Transfer_Encoding) &&
+                               request_->headers()[http::Header::Transfer_Encoding] == "chunked";
     if (isChunkedBody) {
       do_read_chunked_body();
     } else {
@@ -83,10 +83,9 @@ void routine::net::HttpSession::on_read_headers(const std::error_code& ec, size_
 void routine::net::HttpSession::do_read_body() {
   using namespace std::placeholders;
   if (!socket_.is_open()) return;
-  size_t content_length = std::stoull(request_->headers()["content-length"]);
+  size_t content_length = std::stoull(request_->headers().at(http::Header::Content_Length));
 
   if (buffer_.size() <= content_length) {
-    debug("Body is already contained in buffer");
     on_read_body({}, buffer_.size());
   } else {
     asio::async_read(socket_, buffer_, asio::transfer_exactly(content_length - buffer_.size()),
@@ -125,24 +124,26 @@ void routine::net::HttpSession::send_response() {
   if (!socket_.is_open()) return;
   if (response_) {
     std::string response_buffer = response_->prepare_response();
-    socket_.async_write_some(asio::buffer(response_buffer),
-                             [self = shared_from_this()](const std::error_code& ec, size_t bytes) {
-                               if (self->is_errors(ec)) return;
+    socket_.async_write_some(
+        asio::buffer(response_buffer),
+        [self = shared_from_this()](const std::error_code& ec, size_t bytes) {
+          if (self->is_errors(ec)) return;
 
-                               self->debug("Response sended OK");
-                               bool isKeepAlive =
-                                   self->request_->headers().contains("connection") &&
-                                   (self->request_->headers()["connection"] == "Keep-Alive" ||
-                                    self->request_->headers()["connection"] == "keep-alive");
-                               self->response_ = nullptr;
-                               self->request_ = nullptr;
+          self->debug("Session {} was sent an {}", self->address_,
+                      http::utils::to_string(self->response_->status()));
 
-                               if (isKeepAlive) {
-                                 self->do_read_headers();
-                               } else {
-                                 self->close({});
-                               }
-                             });
+          bool isKeepAlive = self->request_->headers().contains(http::Header::Connection) &&
+                             (self->request_->headers()[http::Header::Connection] == "Keep-Alive" ||
+                              self->request_->headers()[http::Header::Connection] == "keep-alive");
+          self->response_ = nullptr;
+          self->request_ = nullptr;
+
+          if (isKeepAlive) {
+            self->do_read_headers();
+          } else {
+            self->close({});
+          }
+        });
   } else {
     warn("No response available in Session {}", address_);
     response_ = std::make_unique<http::Response>(
@@ -152,9 +153,11 @@ void routine::net::HttpSession::send_response() {
 }
 
 bool routine::net::HttpSession::is_errors(const std::error_code& ec) {
+  // TODO # mb make as Template Functor
+  // const static std::unordered_set<int> ignoring_codes{125, 114, 106};
   timeout_timer_.cancel();
-  if (ec) {
-    error("Socket {}. Error code #{} - {}", address_, ec.value(), ec.message());
+  if (ec /*  && !ignoring_codes.contains(ec.value()) */) {
+    error("Session {}. Error code #{} - {}", address_, ec.value(), ec.message());
     close(ec);
     return true;
   }
@@ -163,7 +166,7 @@ bool routine::net::HttpSession::is_errors(const std::error_code& ec) {
 
 void routine::net::HttpSession::close(std::error_code ec) {
 
-  debug("Closing socket {} by error code #{} - {}. Session aborted.", address_, ec.value(),
+  debug("Closing session {} by error code #{} - {}. Session aborted.", address_, ec.value(),
         ec.message());
 
   if (socket_.is_open()) {

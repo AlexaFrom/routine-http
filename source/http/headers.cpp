@@ -1,7 +1,11 @@
 #include "http/headers.hpp"
+#include "http/types.hpp"
+#include "utils/utils.hpp"
+#include <format>
 #include <spdlog/spdlog.h>
 #include <sstream>
-#include <utility>
+#include <stdexcept>
+#include <string_view>
 
 routine::http::Headers::Headers(const std::string& input) {
   std::istringstream stream(input);
@@ -11,10 +15,6 @@ routine::http::Headers::Headers(const std::string& input) {
 routine::http::Headers::Headers(std::istringstream& stream) {
   init_from_stream(stream);
 }
-
-routine::http::Headers::Headers(
-    std::initializer_list<std::pair<const key_type, value_type>> initializer_list)
-    : headers_(initializer_list) {}
 
 void routine::http::Headers::init_from_stream(std::istringstream& stream) {
   std::string line;
@@ -30,51 +30,96 @@ void routine::http::Headers::init_from_stream(std::istringstream& stream) {
 
     std::transform(header.begin(), header.end(), header.begin(), ::tolower);
 
-    headers_.try_emplace(header, value);
+    headers_.emplace(std::move(header), std::move(value));
   }
 }
 
-std::string& routine::http::Headers::at(const std::string& key) const {
-  return headers_.at(key);
+const routine::http::HeaderField& routine::http::Headers::at(std::string_view key) const {
+  auto it = headers_.find(key);
+  if (it == headers_.end()) throw std::invalid_argument(std::format("Header '{}' not found", key));
+  return *it;
 }
 
-std::string& routine::http::Headers::operator[](const std::string& key) const {
-  return headers_[key];
+const routine::http::HeaderField& routine::http::Headers::at(std::string_view key) noexcept {
+  auto it = headers_.find(key);
+  if (it == headers_.end()) it = headers_.emplace(key.data()).first;
+  return *it;
 }
 
-bool routine::http::Headers::contains(const std::string& key) const noexcept {
+const routine::http::HeaderField& routine::http::Headers::operator[](std::string_view key) const {
+  auto it = headers_.find(key);
+  if (it == headers_.end()) throw std::invalid_argument(std::format("Header '{}' not found", key));
+  return *it;
+}
+
+const routine::http::HeaderField&
+routine::http::Headers::operator[](std::string_view key) noexcept {
+  auto it = headers_.find(key);
+  if (it == headers_.end()) it = headers_.emplace(key.data()).first;
+  return *it;
+}
+
+const routine::http::HeaderField& routine::http::Headers::at(routine::http::Header key) const {
+  return at(utils::to_string(key));
+}
+
+const routine::http::HeaderField& routine::http::Headers::at(routine::http::Header key) noexcept {
+  return at(utils::to_string(key));
+}
+
+const routine::http::HeaderField&
+routine::http::Headers::operator[](routine::http::Header key) const {
+  return at(utils::to_string(key));
+}
+
+const routine::http::HeaderField&
+routine::http::Headers::operator[](routine::http::Header key) noexcept {
+  return at(utils::to_string(key));
+}
+
+bool routine::http::Headers::contains(std::string_view key) const noexcept {
   return headers_.contains(key);
 }
 
-void routine::http::Headers::insert(key_type&& key, value_type&& value) {
-  headers_.emplace(std::forward<key_type>(key), std::forward<value_type>(value));
+bool routine::http::Headers::contains(routine::http::Header key) const noexcept {
+  return headers_.contains(utils::to_string(key));
 }
 
-void routine::http::Headers::insert(std::pair<key_type, value_type>&& pair) {
-  insert(std::forward<key_type>(pair.first), std::forward<value_type>(pair.second));
+void routine::http::Headers::insert(
+    std::pair<HeaderField::key_type, HeaderField::value_type>&& pair) {
+  insert(std::forward<HeaderField::key_type>(pair.first),
+         std::forward<HeaderField::value_type>(pair.second));
+}
+
+void routine::http::Headers::insert(HeaderField&& header) {
+  headers_.insert(std::move(header));
+}
+
+void routine::http::Headers::insert(const HeaderField& header) {
+  headers_.insert(header);
 }
 
 void routine::http::Headers::clear() noexcept {
   headers_.clear();
 }
 
-routine::http::Headers::iterator routine::http::Headers::begin() noexcept {
+routine::http::Headers::container::iterator routine::http::Headers::begin() noexcept {
   return headers_.begin();
 }
-routine::http::Headers::iterator routine::http::Headers::end() noexcept {
+routine::http::Headers::container::iterator routine::http::Headers::end() noexcept {
   return headers_.end();
 }
 
-routine::http::Headers::const_iterator routine::http::Headers::begin() const noexcept {
+routine::http::Headers::container::const_iterator routine::http::Headers::begin() const noexcept {
   return headers_.begin();
 }
-routine::http::Headers::const_iterator routine::http::Headers::end() const noexcept {
+routine::http::Headers::container::const_iterator routine::http::Headers::end() const noexcept {
   return headers_.end();
 }
 
-routine::http::Headers::const_iterator routine::http::Headers::cbegin() const noexcept {
+routine::http::Headers::container::const_iterator routine::http::Headers::cbegin() const noexcept {
   return headers_.cbegin();
 }
-routine::http::Headers::const_iterator routine::http::Headers::cend() const noexcept {
+routine::http::Headers::container::const_iterator routine::http::Headers::cend() const noexcept {
   return headers_.cend();
 }
