@@ -19,15 +19,12 @@ routine::net::HttpSession::HttpSession(routine::Scheduler_ptr scheduler,
                  : "Null";
 }
 
-routine::net::HttpSession::~HttpSession() {
-  close({});
-}
-
 void routine::net::HttpSession::run() {
   do_read_headers();
 }
 
 void routine::net::HttpSession::do_read_headers() {
+  info("Waiting headers...");
   using namespace std::placeholders;
   if (!socket_.is_open()) return;
 
@@ -49,7 +46,7 @@ void routine::net::HttpSession::on_read_headers(const std::error_code& ec, size_
     std::string msg = std::format("Requested resource '{}' handler not found", request_->path());
     warn(msg);
 
-    response_ = std::make_unique<http::Response>(http::Status::BAD_REQUEST, http::Headers{}, msg);
+    response_ = std::make_unique<http::Response>(http::Status::Bad_Request, http::Headers{}, msg);
     send_response();
     return;
   }
@@ -100,7 +97,7 @@ void routine::net::HttpSession::do_read_body() {
 
 void routine::net::HttpSession::do_read_chunked_body() {
   error("Chunked body not supported so far");
-  response_ = std::make_unique<http::Response>(http::Status::BAD_REQUEST, http::Headers{},
+  response_ = std::make_unique<http::Response>(http::Status::Bad_Request, http::Headers{},
                                                "Chunked body not supported so far");
   send_response();
 }
@@ -124,33 +121,32 @@ void routine::net::HttpSession::on_request_ready() {
   });
 }
 
-void routine::net::HttpSession::send_response(std::function<void()> callback) {
+void routine::net::HttpSession::send_response() {
   if (!socket_.is_open()) return;
   if (response_) {
     std::string response_buffer = response_->prepare_response();
-    socket_.async_write_some(
-        asio::buffer(response_buffer),
-        [self = shared_from_this(), callback](const std::error_code& ec, size_t bytes) {
-          if (self->is_errors(ec)) return;
+    socket_.async_write_some(asio::buffer(response_buffer),
+                             [self = shared_from_this()](const std::error_code& ec, size_t bytes) {
+                               if (self->is_errors(ec)) return;
 
-          self->debug("Response sended OK");
-          bool isKeepAlive = self->request_->headers().contains("connection") &&
-                             (self->request_->headers()["connection"] == "Keep-Alive" ||
-                              self->request_->headers()["connection"] == "keep-alive");
-          self->response_ = nullptr;
-          self->request_ = nullptr;
+                               self->debug("Response sended OK");
+                               bool isKeepAlive =
+                                   self->request_->headers().contains("connection") &&
+                                   (self->request_->headers()["connection"] == "Keep-Alive" ||
+                                    self->request_->headers()["connection"] == "keep-alive");
+                               self->response_ = nullptr;
+                               self->request_ = nullptr;
 
-          if (isKeepAlive) {
-            self->do_read_headers();
-          } else {
-            self->close({});
-          }
-          if (callback) callback();
-        });
+                               if (isKeepAlive) {
+                                 self->do_read_headers();
+                               } else {
+                                 self->close({});
+                               }
+                             });
   } else {
     warn("No response available in Session {}", address_);
     response_ = std::make_unique<http::Response>(
-        http::Status::INTERNAL_SERVER_ERROR, http::Headers{}, "No response received from task...");
+        http::Status::Internal_Server_Error, http::Headers{}, "No response received from task...");
     send_response();
   }
 }
@@ -166,6 +162,10 @@ bool routine::net::HttpSession::is_errors(const std::error_code& ec) {
 }
 
 void routine::net::HttpSession::close(std::error_code ec) {
+
+  debug("Closing socket {} by error code #{} - {}. Session aborted.", address_, ec.value(),
+        ec.message());
+
   if (socket_.is_open()) {
     socket_.cancel();
     try {

@@ -24,6 +24,7 @@ namespace routine::http {
 
     std::string& operator[](const std::string& key) const;
     std::string& at(const std::string& key) const;
+    // std::string& at(http) const;
 
     bool contains(const std::string& key) const noexcept;
 

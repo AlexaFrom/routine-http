@@ -20,6 +20,8 @@ namespace routine::http {
   class I_BodyStorage {
     // TODO # add move&copy write methods
   public:
+    virtual void operator=(const std::string& str) = 0;
+
     virtual void write(const std::vector<uint8_t>& buffer) = 0;
     virtual void write(asio::streambuf& buffer) = 0;
     virtual std::vector<uint8_t> read() const = 0;
@@ -33,6 +35,8 @@ namespace routine::http {
 
   class MemoryBody : public I_BodyStorage {
   public:
+    void operator=(const std::string& str) override;
+
     void write(const std::vector<uint8_t>& buffer) override;
     void write(asio::streambuf& buffer) override;
     std::vector<uint8_t> read() const override;
@@ -49,6 +53,8 @@ namespace routine::http {
 
   class FileBody : public I_BodyStorage {
   public:
+    void operator=(const std::string& str) override;
+
     void write(const std::vector<uint8_t>& buffer) override;
     void write(asio::streambuf& buffer) override;
     std::vector<uint8_t> read() const override;
@@ -65,6 +71,8 @@ namespace routine::http {
 
   class JsonBody : public I_BodyStorage {
   public:
+    void operator=(const std::string& str) override;
+
     void write(const std::vector<uint8_t>& buffer) override;
     void write(asio::streambuf& buffer) override;
     std::vector<uint8_t> read() const override;

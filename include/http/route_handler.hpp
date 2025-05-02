@@ -48,7 +48,7 @@ namespace routine::http {
         ResourceHandler* node = &dynamic_handlers_;
         std::string current_full_path{'/'};
         std::string path{T::path};
-        auto path_parts = routine::utils::splitString<std::string>(path, '/', 4);
+        auto path_parts = routine::utils::split_string<std::string>(path, '/', 4);
 
         for (const auto& key : path_parts) {
           // check if key is a path parameter
@@ -81,7 +81,7 @@ namespace routine::http {
 
       // otherwise search in dynamic_handlers_
       ResourceHandler* node = &dynamic_handlers_;
-      auto path_parts = routine::utils::splitString<std::string>(request.path(), '/', 4);
+      auto path_parts = routine::utils::split_string<std::string>(request.path(), '/', 4);
 
       for (const auto& key : path_parts) {
         auto it = node->nodes.find(key);

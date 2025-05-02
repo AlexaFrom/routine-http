@@ -10,8 +10,8 @@ routine::http::Request::Request(const std::string& raw_http) {
 
   // parse first line
   {
-    auto parts = routine::utils::splitStringLimit<std::string>(line, ' ', 3);
-    method_ = utils::getMethodFromString(std::move(parts[0]));
+    auto parts = routine::utils::split_string_limit<std::string>(line, ' ', 3);
+    method_ = utils::method_from_string(std::move(parts[0]));
 
     size_t path_query_delimiter_index = parse_query_parameters(parts[1]);
     if (path_query_delimiter_index == 0) {
@@ -20,7 +20,7 @@ routine::http::Request::Request(const std::string& raw_http) {
       path_ = parts[1].substr(0, path_query_delimiter_index);
     }
 
-    version_ = utils::getVersionFromString(std::move(parts[2]));
+    version_ = utils::version_from_string(std::move(parts[2]));
   }
 
   // parse headers
@@ -41,7 +41,7 @@ size_t routine::http::Request::parse_query_parameters(const std::string& string)
   };
 
   path_ = string.substr(0, query_params_index);
-  auto params = routine::utils::splitString<std::string>(
+  auto params = routine::utils::split_string<std::string>(
       string.substr(query_params_index + 1, string.size()), '&');
   std::for_each(params.begin(), params.end(),
                 [lambda_split_parameter, this](const std::string& str) {

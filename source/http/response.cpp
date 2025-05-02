@@ -3,7 +3,7 @@
 #include "utils/utils.hpp"
 #include <memory>
 #include <spdlog/spdlog.h>
-#include <strstream>
+#include <sstream>
 
 routine::http::Response::Response(Status status, Headers headers)
     : status_(status), headers_(headers), body_(nullptr) {}
@@ -45,13 +45,13 @@ std::string routine::http::Response::prepare_response() {
     if (body_) {
       // TODO # content-type = body_.get_type();
       if (!headers_.contains("content-type")) headers_.insert("content-type", "text/plain");
-      headers_["content-length"] = std::to_string(body_->size());
     }
+    headers_["content-length"] = body_ ? std::to_string(body_->size()) : "0";
   }
 
   {
-    std::strstream stream;
-    stream << "HTTP/1.1 " << utils::getStatusAsString(status_) << "\r\n";
+    std::ostringstream stream;
+    stream << "HTTP/1.1 " << utils::to_string(status_) << "\r\n";
     for (auto& header : headers_)
       stream << header.first << ": " << header.second << "\r\n";
 

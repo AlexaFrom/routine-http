@@ -1,6 +1,13 @@
 #include "http/body_storage.hpp"
 #include <boost/asio/buffers_iterator.hpp>
 #include <cstring>
+#include <exception>
+#include <spdlog/spdlog.h>
+
+void routine::http::MemoryBody::operator=(const std::string& str) {
+  data_.resize(str.size());
+  ::memcpy(data_.data(), str.data(), data_.size());
+}
 
 void routine::http::MemoryBody::write(const std::vector<uint8_t>& buffer) {
   size_t size = data_.size();
@@ -33,13 +40,29 @@ const uint8_t* routine::http::MemoryBody::data() const {
 
 //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  // //  //  //  //  // //
 
+void routine::http::JsonBody::operator=(const std::string& str) {
+  try {
+    data_ = nlohmann::json::parse(str);
+  } catch (const std::exception& e) {
+    spdlog::get("Http")->error("Exception # JsonBody # {}", e.what());
+  }
+}
+
 void routine::http::JsonBody::write(const std::vector<uint8_t>& buffer) {
-  data_ = nlohmann::json::parse(std::string(buffer.begin(), buffer.end()));
+  try {
+    data_ = nlohmann::json::parse(std::string(buffer.begin(), buffer.end()));
+  } catch (const std::exception& e) {
+    spdlog::get("Http")->error("Exception # JsonBody # {}", e.what());
+  }
 }
 
 void routine::http::JsonBody::write(asio::streambuf& buffer) {
-  data_ = nlohmann::json::parse(
-      std::string(asio::buffers_begin(buffer.data()), asio::buffers_end(buffer.data())));
+  try {
+    data_ = nlohmann::json::parse(
+        std::string(asio::buffers_begin(buffer.data()), asio::buffers_end(buffer.data())));
+  } catch (const std::exception& e) {
+    spdlog::get("Http")->error("Exception # JsonBody # {}", e.what());
+  }
 }
 
 std::vector<uint8_t> routine::http::JsonBody::read() const {

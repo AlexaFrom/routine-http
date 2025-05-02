@@ -1,4 +1,5 @@
 #include "http/headers.hpp"
+#include <spdlog/spdlog.h>
 #include <sstream>
 #include <utility>
 
@@ -18,7 +19,7 @@ routine::http::Headers::Headers(
 void routine::http::Headers::init_from_stream(std::istringstream& stream) {
   std::string line;
   while (std::getline(stream, line)) {
-    if (line.starts_with("\r\n\r\n")) break;
+    if (line[0] == '\r') break;
 
     size_t n = line.find(':', 2);
     if (n == std::string::npos) continue;

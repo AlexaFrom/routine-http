@@ -8,12 +8,12 @@
 #include "scheduler.hpp"
 #include "utils/benchmark.hpp"
 
+#include <cassert>
 #include <chrono>
 #include <memory>
 #include <nlohmann/json_fwd.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
-#include <thread>
 
 class DynamicEchoHandler : public routine::http::RequestHandler {
 public:
@@ -27,8 +27,11 @@ public:
   // }
 
   routine::http::Response_ptr process_request(routine::http::Request_ptr request) override {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    return std::make_unique<routine::http::Response>(routine::http::Status::OK,
+    auto logger = spdlog::get("Http");
+    for (auto& header : request->headers())
+      logger->info("{}: {}", header.first, header.second);
+
+    return std::make_unique<routine::http::Response>(routine::http::Status::Ok,
                                                      routine::http::Headers{});
   }
 };
@@ -46,12 +49,15 @@ public:
 
   routine::http::Response_ptr process_request(routine::http::Request_ptr request) override {
     // cast to JsonBody from interface
-    auto* body =
-        request->body() ? dynamic_cast<routine::http::JsonBody*>(request->body().get()) : nullptr;
+    auto* body = dynamic_cast<routine::http::JsonBody*>(request->body().get());
 
     auto response = std::make_unique<routine::http::Response>(
-        routine::http::Status::OK, routine::http::Headers{},
-        body->json()["message"].get<std::string>());
+        routine::http::Status::Ok, routine::http::Headers{},
+        std::make_shared<routine::http::MemoryBody>());
+
+    try {
+      (*response->body()) = body->json().at("message").get<std::string>();
+    } catch (const std::exception& e) { (*response->body()) = "No message"; }
 
     return response;
   }

@@ -25,7 +25,7 @@ namespace routine::net {
     void on_read_body(const std::error_code& ec, size_t);
 
     void on_request_ready();
-    void send_response(std::function<void()> callback = nullptr);
+    void send_response();
 
     bool is_errors(const std::error_code& ec);
     void close(std::error_code ec);
