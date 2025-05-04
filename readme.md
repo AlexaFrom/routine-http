@@ -3,28 +3,25 @@
 
 **Library in development!** The purpose of library is to relieve the developer of routine tasks, while developing simple RestFull api.
 
-Support C++17 and newer, but in future maybe support C++20.
-If you want use C++17 check [this](#building).
-
 # Dependencies
 
  - Asio or Boost.Asio *(use flag -DUSE_BOOST_ASIO=ON)*
- - nlohmann/json
+ - taocpp/json & taocpp/PEGTL
  - grpc & protobuf
  - OpenSSL
- - spdlog
+ - spdlog & fmt
 
 > deps can change in the future
 
 # Building
 by default using clang C++23, before build please check CMakeLists.txt.
-If you need to compile it on standard less than C++23, edit CMakeLists.txt to break spdlog dependencie from C++23 std::format and use fmt library.
 
 Clang C++23 with default CMakeLists.txt building instruction:
 ```
 mkdir build && cd build
 cmake .. -DUSE_BOOST_ASIO=ON
 cmake --build . --target routine
+sudo cmake --install .
 ```
 > use flag *USE_BOOST_ASIO* to resolve boost:: namespaces for asio library
 
@@ -65,16 +62,24 @@ public:
 
 int main() {
   // Initialize loggers
-  auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  console_sink->set_level(spdlog::level::trace);
-  std::vector<spdlog::sink_ptr> sinks{console_sink};
+  {
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    console_sink->set_level(spdlog::level::trace);
+    std::vector<spdlog::sink_ptr> sinks{console_sink};
 
-  auto logger = routine::utils::make_logger("System", spdlog::level::trace, sinks);
-  routine::utils::make_logger("Scheduler", spdlog::level::trace, sinks);
-  routine::utils::make_logger("Acceptor", spdlog::level::trace, sinks);
-  routine::utils::make_logger("Http", spdlog::level::trace, sinks);
-  routine::utils::make_logger("Router", spdlog::level::trace, sinks);
-  routine::utils::make_logger("ThreadPool", spdlog::level::trace, sinks);
+    auto lambda_make_logger = [&sinks](const std::string& name, spdlog::level::level_enum level) {
+      auto logger = std::make_shared<spdlog::logger>(name, sinks.begin(), sinks.end());
+      logger->set_level(level);
+      spdlog::register_logger(logger);
+    };
+
+    const std::vector<std::pair<std::string, spdlog::level::level_enum>> loggers{
+        {"System", spdlog::level::trace},    {"ThreadPool", spdlog::level::trace},
+        {"Scheduler", spdlog::level::trace}, {"Acceptor", spdlog::level::trace},
+        {"Http", spdlog::level::trace},      {"Router", spdlog::level::trace} };
+
+    for (const auto& i : loggers) lambda_make_logger(i.first, i.second);
+  }
 
   // Routing handlers
   auto router = std::make_unique<routine::http::RouteHandler>();
