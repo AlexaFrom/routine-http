@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include <nlohmann/json.hpp>
-#include <nlohmann/json_fwd.hpp>
 #include <string>
+#include <tao/json.hpp>
+#include <tao/json/forward.hpp>
 #include <vector>
 
 #ifdef USE_BOOST_ASIO
@@ -24,6 +24,8 @@ namespace routine::http {
 
     virtual void write(const std::vector<uint8_t>& buffer) = 0;
     virtual void write(asio::streambuf& buffer) = 0;
+    virtual void write(const std::string& buffer) = 0;
+    virtual void write(std::string&& buffer) = 0;
     virtual std::vector<uint8_t> read() const = 0;
     virtual size_t size() const = 0;
     virtual std::string as_string() const = 0;
@@ -33,12 +35,14 @@ namespace routine::http {
     virtual ~I_BodyStorage() = default;
   };
 
-  class MemoryBody : public I_BodyStorage {
+  class MemoryBody final : public I_BodyStorage {
   public:
     void operator=(const std::string& str) override;
 
     void write(const std::vector<uint8_t>& buffer) override;
     void write(asio::streambuf& buffer) override;
+    void write(const std::string& buffer) override;
+    void write(std::string&& buffer) override;
     std::vector<uint8_t> read() const override;
     size_t size() const override;
     std::string as_string() const override;
@@ -51,12 +55,14 @@ namespace routine::http {
     std::vector<uint8_t> data_;
   };
 
-  class FileBody : public I_BodyStorage {
+  class FileBody final : public I_BodyStorage {
   public:
     void operator=(const std::string& str) override;
 
     void write(const std::vector<uint8_t>& buffer) override;
     void write(asio::streambuf& buffer) override;
+    void write(const std::string& buffer) override;
+    void write(std::string&& buffer) override;
     std::vector<uint8_t> read() const override;
     size_t size() const override;
     std::string as_string() const override;
@@ -69,12 +75,14 @@ namespace routine::http {
     std::vector<uint8_t> data_;
   };
 
-  class JsonBody : public I_BodyStorage {
+  class JsonBody final : public I_BodyStorage {
   public:
     void operator=(const std::string& str) override;
 
     void write(const std::vector<uint8_t>& buffer) override;
     void write(asio::streambuf& buffer) override;
+    void write(const std::string& buffer) override;
+    void write(std::string&& buffer) override;
     std::vector<uint8_t> read() const override;
     size_t size() const override;
     std::string as_string() const override;
@@ -83,10 +91,10 @@ namespace routine::http {
 
     StorageType get_type() const override { return StorageType::Json; }
 
-    const nlohmann::json& json() const;
+    const tao::json::value& json() const;
 
   private:
-    nlohmann::json data_;
+    tao::json::value data_;
   };
 
 } // namespace routine::http

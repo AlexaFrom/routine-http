@@ -2,7 +2,11 @@
 #include <boost/asio/buffers_iterator.hpp>
 #include <cstring>
 #include <exception>
+#include <iterator>
 #include <spdlog/spdlog.h>
+#include <tao/json/from_input.hpp>
+#include <tao/json/from_stream.hpp>
+#include <tao/json/from_string.hpp>
 
 void routine::http::MemoryBody::operator=(const std::string& str) {
   data_.resize(str.size());
@@ -20,6 +24,17 @@ void routine::http::MemoryBody::write(asio::streambuf& buffer) {
   data_.resize(size + buffer.data().size());
   ::memcpy(data_.data() + size, buffer.data().data(), buffer.data().size());
   buffer.consume(buffer.size());
+}
+
+void routine::http::MemoryBody::write(const std::string& buffer) {
+  size_t size = data_.size();
+  data_.resize(size + buffer.size());
+  ::memcpy(data_.data() + size, buffer.data(), buffer.size());
+}
+
+void routine::http::MemoryBody::write(std::string&& buffer) {
+  data_.insert(data_.end(), std::make_move_iterator(buffer.begin()),
+               std::make_move_iterator(buffer.end()));
 }
 
 std::vector<uint8_t> routine::http::MemoryBody::read() const {
@@ -40,48 +55,51 @@ const uint8_t* routine::http::MemoryBody::data() const {
 
 //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  //  // //  //  //  //  // //
 
-void routine::http::JsonBody::operator=(const std::string& str) {
-  try {
-    data_ = nlohmann::json::parse(str);
-  } catch (const std::exception& e) {
-    spdlog::get("Http")->error("Exception # JsonBody # {}", e.what());
-  }
+void routine::http::JsonBody::operator=(const std::string& buffer) {
+  write(buffer);
 }
 
 void routine::http::JsonBody::write(const std::vector<uint8_t>& buffer) {
+  write(std::string(buffer.begin(), buffer.end()));
+}
+
+void routine::http::JsonBody::write(asio::streambuf& buffer) {
+  write(std::string(asio::buffers_begin(buffer.data()), asio::buffers_end(buffer.data())));
+}
+
+void routine::http::JsonBody::write(const std::string& buffer) {
   try {
-    data_ = nlohmann::json::parse(std::string(buffer.begin(), buffer.end()));
+    data_ = tao::json::from_string(buffer);
   } catch (const std::exception& e) {
     spdlog::get("Http")->error("Exception # JsonBody # {}", e.what());
   }
 }
 
-void routine::http::JsonBody::write(asio::streambuf& buffer) {
+void routine::http::JsonBody::write(std::string&& buffer) {
   try {
-    data_ = nlohmann::json::parse(
-        std::string(asio::buffers_begin(buffer.data()), asio::buffers_end(buffer.data())));
+    data_ = tao::json::from_string(std::move(buffer));
   } catch (const std::exception& e) {
     spdlog::get("Http")->error("Exception # JsonBody # {}", e.what());
   }
 }
 
 std::vector<uint8_t> routine::http::JsonBody::read() const {
-  std::string str = data_.dump();
+  std::string str = data_.get_string();
   return std::vector<uint8_t>(str.begin(), str.end());
 }
 
 size_t routine::http::JsonBody::size() const {
-  return data_.size();
+  return data_.get_string().size();
 }
 
 std::string routine::http::JsonBody::as_string() const {
-  return data_.dump();
+  return data_.get_string();
 }
 
 const uint8_t* routine::http::JsonBody::data() const {
   return nullptr;
 }
 
-const nlohmann::json& routine::http::JsonBody::json() const {
+const tao::json::value& routine::http::JsonBody::json() const {
   return data_;
 }
