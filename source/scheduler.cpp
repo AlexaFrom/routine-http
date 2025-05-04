@@ -2,7 +2,8 @@
 #include <spdlog/spdlog.h>
 #include <thread>
 
-routine::Scheduler::Scheduler() : LoggableObject("Scheduler"), context_(), io_timeout_ms_(5000) {}
+routine::Scheduler::Scheduler()
+    : spdlog::logger(*spdlog::get("Scheduler")), context_(), io_timeout_ms_(5000) {}
 
 void routine::Scheduler::set_router(std::unique_ptr<routine::http::RouteHandler> router) {
   router_ = std::move(router);

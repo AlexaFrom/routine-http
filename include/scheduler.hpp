@@ -5,10 +5,10 @@
 #include "http/route_handler.hpp"
 #include "request_handler.hpp"
 #include "thread_pool.hpp"
-#include "utils/loggable_object.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <memory>
+#include <spdlog/logger.h>
 #include <thread>
 
 #ifdef USE_BOOST_ASIO
@@ -20,8 +20,7 @@ using namespace boost;
 
 namespace routine {
 
-  class Scheduler : public std::enable_shared_from_this<Scheduler>,
-                    private routine::utils::LoggableObject {
+  class Scheduler : public std::enable_shared_from_this<Scheduler>, private spdlog::logger {
   public:
     Scheduler();
     ~Scheduler() = default;

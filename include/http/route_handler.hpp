@@ -1,15 +1,15 @@
 #pragma once
 
 #include "request_handler.hpp"
-#include "utils/loggable_object.hpp"
 #include "utils/utils.hpp"
 #include <functional>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <type_traits>
 
 namespace routine::http {
 
-  class RouteHandler : routine::utils::LoggableObject {
+  class RouteHandler : private spdlog::logger {
     using Handler_creator = std::function<std::shared_ptr<routine::http::RequestHandler>()>;
     using Handler_creator_ptr = std::unique_ptr<Handler_creator>;
 
@@ -19,7 +19,7 @@ namespace routine::http {
     };
 
   public:
-    RouteHandler() : LoggableObject("Router") {}
+    RouteHandler() : spdlog::logger(*spdlog::get("Router")) {}
 
 #if defined(__cplusplus) && __cplusplus >= 202002L
     // C++20 and newer

@@ -2,17 +2,14 @@
 #include "http/headers.hpp"
 #include "http/response.hpp"
 #include "http/types.hpp"
-#include <asm-generic/socket.h>
-#include <boost/asio/detail/socket_option.hpp>
-#include <boost/asio/post.hpp>
 #include <chrono>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <system_error>
-#include <unordered_set>
 
 routine::net::HttpSession::HttpSession(routine::Scheduler_ptr scheduler,
                                        asio::ip::tcp::socket socket)
-    : LoggableObject("Http"), scheduler_(scheduler), socket_(std::move(socket)),
+    : spdlog::logger(*spdlog::get("Http")), scheduler_(scheduler), socket_(std::move(socket)),
       timeout_timer_(scheduler_->get_context()) {
   address_ = socket_.is_open()
                  ? std::format("{}:{}", socket_.remote_endpoint().address().to_v4().to_string(),
@@ -53,14 +50,13 @@ void routine::net::HttpSession::on_read_headers(const std::error_code& ec, size_
 
   response_ = handler_->prepare_request(request_);
   if (response_ != nullptr) {
-    // Ответ был сформирован на этапе подготовки запроса, тело не нужно,
-    // отправляем response
+    // Response was generated at the prepare stage, body is not needed
     send_response();
     return;
   }
 
   if (request_->body()) {
-    // если обработчик подразумевает наличие тела, т.е. он же его и создал
+    // if handler implies presence of body
     if (request_->headers().contains(http::Header::Content_Length)) {
       do_read_body();
       return;
@@ -109,7 +105,6 @@ void routine::net::HttpSession::on_read_body(const std::error_code& ec, size_t) 
 }
 
 void routine::net::HttpSession::on_request_ready() {
-  // clear buffer
   buffer_.consume(buffer_.size());
   scheduler_->prepare_task([self = shared_from_this()]() {
     self->response_ = self->handler_->process_request(self->request_);
@@ -173,7 +168,7 @@ void routine::net::HttpSession::close(std::error_code ec) {
     socket_.cancel();
     try {
       socket_.shutdown(asio::socket_base::shutdown_both);
-    } catch (...) { debug("Socket shutdown is missing. Already closed"); }
+    } catch (...) {}
   }
   socket_.close();
 }

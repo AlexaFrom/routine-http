@@ -1,15 +1,16 @@
 #include "thread_pool.hpp"
-#include "utils/loggable_object.hpp"
 #include <chrono>
+#include <fmt/std.h>
 #include <memory>
 #include <mutex>
 #include <numeric>
+#include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 #include <thread>
 
 // TODO # мб добавить флаг о том, что проц в паузе?
 
-routine::ThreadPool::ThreadPool() : utils::LoggableObject("ThreadPool") {}
+routine::ThreadPool::ThreadPool() : spdlog::logger(*spdlog::get("ThreadPool")) {}
 
 void routine::ThreadPool::push(std::function<void()> lambda) {
   if (threads_.empty()) {

@@ -2,12 +2,10 @@
 
 #include "net/http_session.hpp"
 #include "scheduler.hpp"
-#include "utils/loggable_object.hpp"
-#include <chrono>
 #include <functional>
-#include <memory>
+#include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 #include <system_error>
-#include <thread>
 
 #ifdef USE_BOOST_ASIO
 #include <boost/asio.hpp>
@@ -19,12 +17,12 @@ using namespace boost;
 namespace routine::net {
 
   template <typename Session>
-  class Acceptor : private utils::LoggableObject {
+  class Acceptor : private spdlog::logger {
   public:
     Acceptor(routine::Scheduler_ptr scheduler, short port)
         : scheduler_(scheduler),
           acceptor_(scheduler->get_context(), asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)),
-          LoggableObject("Acceptor") {}
+          spdlog::logger(*spdlog::get("Acceptor")) {}
 
     void async_accept() {
       using namespace std::placeholders;

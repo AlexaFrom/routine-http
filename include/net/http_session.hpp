@@ -3,14 +3,13 @@
 #include "http/request.hpp"
 #include "request_handler.hpp"
 #include "scheduler.hpp"
-#include "utils/loggable_object.hpp"
 #include <memory>
+#include <spdlog/logger.h>
 #include <system_error>
 
 namespace routine::net {
 
-  class HttpSession : private utils::LoggableObject,
-                      public std::enable_shared_from_this<HttpSession> {
+  class HttpSession : spdlog::logger, public std::enable_shared_from_this<HttpSession> {
   public:
     HttpSession(std::shared_ptr<routine::Scheduler> scheduler, asio::ip::tcp::socket socket);
 

@@ -1,16 +1,14 @@
 #pragma once
 
-#include "http/request.hpp"
-#include "request_handler.hpp"
-#include "utils/loggable_object.hpp"
 #include <condition_variable>
 #include <cstdint>
 #include <queue>
+#include <spdlog/logger.h>
 #include <thread>
 
 namespace routine {
 
-  class ThreadPool : utils::LoggableObject {
+  class ThreadPool : spdlog::logger {
 
     enum class Status : uint8_t { Working, Stopped };
 
