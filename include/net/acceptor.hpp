@@ -40,7 +40,7 @@ namespace routine::net {
       trace("New connection: {}:{}", socket.remote_endpoint().address().to_v4().to_string(),
             socket.remote_endpoint().port());
 
-      std::make_shared<routine::net::HttpSession>(scheduler_, std::move(socket))->run();
+      std::make_shared<routine::net::HttpSession>(scheduler_, std::move(socket))->run_process();
     }
 
   private:
