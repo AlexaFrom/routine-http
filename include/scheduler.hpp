@@ -1,15 +1,12 @@
 #pragma once
 
 #include "http/request.hpp"
-#include "http/response.hpp"
 #include "http/route_handler.hpp"
 #include "request_handler.hpp"
 #include "thread_pool.hpp"
 
-#include <boost/asio/io_context.hpp>
 #include <memory>
 #include <spdlog/logger.h>
-#include <thread>
 
 #ifdef USE_BOOST_ASIO
 #include <boost/asio.hpp>
