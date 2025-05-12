@@ -73,7 +73,7 @@ namespace routine::http::utils {
     static const std::unordered_map<http::Header, std::string> map = {
         {Header::None, "none"},
         {Header::Host, "host"},
-        {Header::User_Aggent, "user-agent"},
+        {Header::User_Agent, "user-agent"},
         {Header::Accept, "accept"},
         {Header::Accept_Encoding, "accept-encoding"},
         {Header::Accept_Language, "accept-language"},

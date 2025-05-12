@@ -18,7 +18,7 @@ namespace routine::http {
   enum class Header {
     None,
     Host,
-    User_Aggent,
+    User_Agent,
     Accept,
     Accept_Encoding,
     Accept_Language,
