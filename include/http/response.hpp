@@ -9,6 +9,7 @@
 #include "utils/utils.hpp"
 #include <memory>
 #include <numeric>
+#include <stdexcept>
 #include <system_error>
 #include <vector>
 
@@ -16,10 +17,11 @@ namespace routine::http {
 
   class Response;
 
-  using Response_ptr = std::unique_ptr<routine::http::Response>;
+  using Response_ptr = std::shared_ptr<routine::http::Response>;
 
   class Response {
   public:
+    Response(std::string raw_http) { throw std::runtime_error("Not impl"); }
     Response(routine::http::Status status, Headers headers);
     Response(Status status, Headers headers, std::shared_ptr<I_BodyStorage> body);
     Response(Status status, Headers headers, std::string body);

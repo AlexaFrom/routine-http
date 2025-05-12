@@ -40,6 +40,7 @@ routine::http::Headers& routine::http::Response::headers() {
 std::string routine::http::Response::prepare_response() {
   {
     if (!headers_.contains("server")) headers_.insert("server", "RoutineHttpLibrary");
+
     headers_.insert("date", routine::http::utils::get_current_http_date());
 
     if (body_) {
@@ -57,6 +58,7 @@ std::string routine::http::Response::prepare_response() {
 
     stream << "\r\n";
     if (body_) stream << body_->as_string();
+
     return stream.str();
   }
 }

@@ -1,6 +1,7 @@
 #include "http/request.hpp"
 #include "utils/utils.hpp"
 #include <algorithm>
+#include <spdlog/spdlog.h>
 #include <sstream>
 
 routine::http::Request::Request(const std::string& raw_http) {
@@ -62,4 +63,48 @@ const std::string& routine::http::Request::path() {
 }
 routine::http::Version routine::http::Request::version() {
   return version_;
+}
+
+std::string routine::http::Request::prepare_request() const {
+  std::ostringstream stream;
+  stream << utils::to_string(method_) << " /";
+
+  if (path_params_.size() > 0) {
+    auto path_parts = routine::utils::split_string<std::string>(path_, '/');
+    for (auto& part : path_parts) {
+      if (part[0] == '{')
+        stream << path_params_[part.substr(1, part.size() - 2)].value();
+      else
+        stream << part;
+
+      if (part != *std::prev(path_parts.end())) stream << '/';
+    }
+  } else {
+    if (path_.back() == '/')
+      stream << path_.substr(0, path_.size() - 1);
+    else
+      stream << routine::utils::format_path(path_);
+  }
+
+  if (query_params_.size() > 0) {
+    stream << '?';
+    size_t i = 0;
+    for (auto& param : query_params_) {
+      stream << param.first << '=' << param.second.value();
+      if (++i < query_params_.size()) stream << '&';
+    }
+  }
+
+  stream << " HTTP/1.1\r\n";
+
+  for (auto& header : headers_)
+    stream << header.as_string() << "\r\n";
+
+  if (!headers_.contains(http::Header::User_Agent)) stream << "User-Agent: Asio/RoutineHttp\r\n";
+  if (body_) stream << "Content-Length: " << body_->size() << "\r\n";
+
+  stream << "\r\n";
+  if (body_) stream << body_->as_string();
+
+  return stream.str();
 }

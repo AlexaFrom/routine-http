@@ -17,6 +17,8 @@ namespace routine::http {
     const std::string& path();
     Version version();
 
+    std::string prepare_request() const;
+
     routine::http::Parameters& query_params() { return query_params_; }
     routine::http::Parameters& path_params() { return path_params_; }
     std::unique_ptr<routine::http::I_BodyStorage>& body() { return body_; };
