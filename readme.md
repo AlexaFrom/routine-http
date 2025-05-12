@@ -5,9 +5,8 @@
 
 # Dependencies
 
- - Asio or Boost.Asio *(use flag -DUSE_BOOST_ASIO=ON)*
+ - Asio or Boost.Asio
  - taocpp/json & taocpp/PEGTL
- - grpc & protobuf
  - OpenSSL
  - spdlog & fmt
 
@@ -27,17 +26,11 @@ sudo cmake --install .
 
 ## Example
 ```c++
-#include "net/acceptor.hpp"
-#include "scheduler.hpp"
-#include <memory>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
-
 // create class and override the RequestHandler methods
-class DynamicEchoHandler : public routine::http::RequestHandler {
+class EchoHandler : public routine::http::RequestHandler {
 public:
   // DONT FORGET TO SPECIFY THE PATH OF RESOURCE HANDLER
-  inline static const std::string path{"/api/echo/{arg}/hello"};
+  inline static const std::string path{"/api/{argument}/echo"};
 
 	// Executed in IO-bound threads.
 	// > Return nullptr - to add to the queue,
@@ -45,7 +38,6 @@ public:
 	routine::http::Response_ptr prepare_request(routine::http::Request_ptr request) override {
     if (request->method() != routine::http::Method::Head)
 	    // make body if this implies a query
-      // request->body() = std::make_unique<routine::http::JsonBody>();
       request->body() = std::make_unique<routine::http::MemoryBody>();
     return nullptr;
   }
@@ -61,24 +53,9 @@ public:
 };
 
 int main() {
-  // Initialize loggers
   {
-    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    console_sink->set_level(spdlog::level::trace);
-    std::vector<spdlog::sink_ptr> sinks{console_sink};
-
-    auto lambda_make_logger = [&sinks](const std::string& name, spdlog::level::level_enum level) {
-      auto logger = std::make_shared<spdlog::logger>(name, sinks.begin(), sinks.end());
-      logger->set_level(level);
-      spdlog::register_logger(logger);
-    };
-
-    const std::vector<std::pair<std::string, spdlog::level::level_enum>> loggers{
-        {"System", spdlog::level::trace},    {"ThreadPool", spdlog::level::trace},
-        {"Scheduler", spdlog::level::trace}, {"Acceptor", spdlog::level::trace},
-        {"Http", spdlog::level::trace},      {"Router", spdlog::level::trace} };
-
-    for (const auto& i : loggers) lambda_make_logger(i.first, i.second);
+    // Initialize loggers
+    // see /examples/example1.cpp
   }
 
   // Routing handlers
@@ -93,7 +70,7 @@ int main() {
 
   // Start
   acceptor->async_accept();
-	// run 1 IO thread and 2 CPU thread workers
+	// run 1 IO thread and 2 CPU threads workers
   scheduler->run(1, 2);
   // lock main thread
   scheduler->join_threads();
@@ -107,7 +84,6 @@ All documents you can see in readme.md or 'docs/' folder.
 ## In development
 
  - Body types
-	 - JsonBody
 	 - FileBody
  -	TLS support for HTTPs
  -	GZIP, DEFLATE and BR support
@@ -116,7 +92,6 @@ All documents you can see in readme.md or 'docs/' folder.
 	 -	monitoring, stats and logs
 	 -	*admin web ui
  -	Middleware components for Requests/Responses
- -	support others microservices with gRPC
  -	Handlers runtime benchmarks
  -	anything, but not unit tests ☺
 
