@@ -6,6 +6,7 @@
 #include "net/http_session.hpp"
 #include "request_handler.hpp"
 #include "scheduler.hpp"
+#include "utils/benchmark.hpp"
 
 #include <cassert>
 #include <memory>
@@ -24,11 +25,6 @@ public:
     for (auto& header : request->headers())
       logger->info(header.as_string());
 
-    // check if Keep-Alive connection
-    if (request->headers().at(routine::http::Header::Connection).value() == "Keep-Alive") {
-      logger->info("Keep-Alive is setted");
-    }
-
     // make&return response
     return std::make_unique<routine::http::Response>(routine::http::Status::Ok,
                                                      routine::http::Headers{});
@@ -41,14 +37,13 @@ public:
   inline static const std::string path{"/api/echo"};
 
   routine::http::Response_ptr prepare_request(routine::http::Request_ptr request) override {
-    if (request->method() != routine::http::Method::Head)
-      request->body() = std::make_unique<routine::http::JsonBody>();
+    request->body() = std::make_unique<routine::http::JsonBody>();
     return nullptr;
   }
 
   routine::http::Response_ptr process_request(routine::http::Request_ptr request) override {
     // cast to JsonBody from interface
-    auto* body = dynamic_cast<routine::http::JsonBody*>(request->body().get());
+    auto body = dynamic_cast<routine::http::JsonBody*>(request->body().get());
     assert(body != nullptr && "Body is nullptr"); // for example only. Dont use assert here!
 
     // make empty response
@@ -57,7 +52,7 @@ public:
         std::make_shared<routine::http::MemoryBody>());
 
     try {
-      (*response->body()) = body->json().at("message").get_string();
+      (*response->body()) = body ? body->json().at("message").get_string() : "No body contained";
     } catch (const std::exception& e) { (*response->body()) = "No message"; }
 
     return response;
