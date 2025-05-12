@@ -92,6 +92,7 @@ namespace routine::http { // namespace utils
     Field& at(const std::string& key) { return params_.at(key); }
 
     Field& operator[](const std::string& key) { return params_[key]; }
+    const Field& operator[](const std::string& key) const { return params_[key]; }
 
     void erase(const std::string& key) { params_.erase(key); }
 
@@ -101,7 +102,7 @@ namespace routine::http { // namespace utils
     auto end() const noexcept { return params_.end(); }
 
   private:
-    std::unordered_map<std::string, Field> params_;
+    mutable std::unordered_map<std::string, Field> params_;
   };
 
 } // namespace routine::http
